@@ -1,0 +1,23 @@
+*{
+    box-sizing: border-box;
+    padding: 0;
+    margin: 0;
+}
+
+#products{
+    table{
+        width: 50%;
+        tr{
+            display: flex;
+            justify-content: space-between;
+            td{
+                max-width: 30px;
+                max-height: 30px;
+                align-self: center;
+                img{
+                    width: 100%;
+                }
+            }
+        }
+    }
+}
