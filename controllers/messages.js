@@ -1,32 +1,35 @@
-import fs from 'fs'
+const fs = require('fs')
 
-export default class Messages {
-  constructor(file) {
-    this.save = (msj) => {
-      try {
-        const content = fs.readFileSync(file, 'utf-8')
-        if (content === '') {
-          const newMsj = { ...msj }
-          const newFile = []
-          newFile.push(newMsj)
-          fs.appendFileSync(file, JSON.stringify(newFile))
-        } else {
-          const contentParsed = JSON.parse(content)
-          const newMsj = { ...msj }
-          contentParsed.push(newMsj)
-          fs.writeFileSync(file, JSON.stringify(contentParsed))
-        }
-      } catch {
-        throw new Error('No se pudo guardar')
-      }
-    }
-    this.getAll = async () => {
-      try {
-        const content = fs.readFileSync(file, 'utf-8')
-        return JSON.parse(content)
-      } catch {
-        // throw new Error('Error pidiendo los datos')
-      }
-    }
-  }
+class Messages {
+	constructor(db, table) {
+		this.save = (message) => {
+			db.schema.hasTable(table).then((exist) => {
+				if (!exist) {
+					return db.schema.createTable(table, (t) => {
+						t.increments('id').primary()
+						t.string('user', 100)
+						t.integer('fyh')
+						t.text('message')
+					})
+				}
+			})
+
+			db(table)
+				.insert(message)
+				.then(() => console.log('mensaje agregado'))
+				.catch((err) => {
+					console.log(err)
+					throw err
+				})
+		}
+		this.getAll = async() => {
+      const messages = await db.from(table)
+      .select('*')
+      .then((rows) => rows)
+      
+      return messages
+		}
+	}
 }
+
+module.exports=Messages

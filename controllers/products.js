@@ -1,83 +1,83 @@
-import fs from 'fs'
+const fs = require('fs')
 
-export default class Container {
-  constructor(file) {
-    this.save = (obj) => {
-      try {
-        const content = fs.readFileSync(file, 'utf-8')
-        if (content === '') {
-          const newId = 1
-          const newObj = { ...obj, id: newId }
-          const newFile = []
-          newFile.push(newObj)
-          fs.appendFileSync(file, JSON.stringify(newFile))
-          return newId
-        } else {
-          const contentParsed = JSON.parse(content)
-          const newId = contentParsed[contentParsed.length - 1].id + 1
-          const newObj = { ...obj, id: newId }
-          contentParsed.push(newObj)
-          fs.writeFileSync(file, JSON.stringify(contentParsed))
-          return newId
-        }
-      } catch {
-        throw new Error('No se pudo guardar')
-      }
-    }
-    this.getAll = async () => {
-      try {
-        const content = fs.readFileSync(file, 'utf-8')
-        return JSON.parse(content)
-      } catch {
-        // throw new Error('Error pidiendo los datos')
-      }
-    }
-    this.getById = async (id) => {
-      try {
-        const content = fs.readFileSync(file, 'utf-8')
-        const parsed = JSON.parse(content)
-        const el = parsed.filter((e) => e.id === id)
-        return el
-      } catch {
-        throw new Error('Error pidiendo los datos')
-      }
-    }
+class Container {
+	constructor(db, table) {
+		this.save = (obj) => {
+			db.schema.hasTable(table).then((exist) => {
+				if (!exist) {
+					return db.schema.createTable(table, (t) => {
+						t.increments('id').primary()
+						t.string('nombre', 50)
+						t.integer('precio')
+						t.string('url', 500)
+					})
+				}
+			})
 
-    this.modifyById = async (newValues, id) => {
-      try {
-        const content = fs.readFileSync(file, 'utf-8')
-        const parsed = JSON.parse(content)
-        const item = parsed.find((e) => e.id == id)
-        if (item) {
-          item.nombre = newValues.nombre
-          item.precio = newValues.precio
-          item.thumbnail = newValues.thumbnail
-          fs.writeFileSync(file, JSON.stringify(parsed))
-          return true
-        } else {
-          // console.log('No se encontró el producto solicitado')
-          return false
-        }
-      } catch {
-        throw new Error('Error pidiendo los datos')
-      }
-    }
+			db(table)
+				.insert(obj)
+				.then(() => console.log('producto agregado'))
+				.catch((err) => {
+					console.log(err)
+					throw err
+				})
+		}
+		this.getAll = async () => {
+			const products = await db
+				.from(table)
+				.select('*')
+				.then((rows) => rows)
+				.catch((err) => {
+					console.log(err)
+					throw err
+				})
+			return products
+		}
+		this.getById = async (id) => {
+			const product = await db
+				.from(table)
+				.select('*')
+				.where('id', '=', id)
+				.then((row) => row)
+				.catch((err) => {
+					console.log(err)
+					throw err
+				})
+			return product
+		}
 
-    this.deleteById = async (id) => {
-      try {
-        const content = fs.readFileSync(file, 'utf-8')
-        const parsed = JSON.parse(content)
-        const item = parsed.findIndex((e) => e.id == id)
-        if (item >= 0) {
-          parsed.splice(item, 1)
-          fs.writeFileSync(file, JSON.stringify(parsed))
+		this.modifyById = async (newValues, id) => {
+			if (typeof newValues.precio === String) {
+				Number(newValues.precio)
+			}
+			const product = await db(table)
+				.where({ id: id })
+				.update({ nombre: newValues.nombre, precio: newValues.precio, url: newValues.url })
+				.then(() => {
+					return true
+				})
+				.catch((err) => {
+					console.log(err)
+					return false
+				})
+		}
+
+		this.deleteById = async (id) => {
+			const deleted = db(table)
+				.where({ id: id })
+				.del()
+        .then(()=>{return 'Producto eliminado'})
+				.catch((err) => {
+					console.log(err)
+					throw err
+				})
+        if(deleted){
           return 'Producto eliminado'
-        } else {
-          return 'Producto inexistente'
+        }else{
+          return 'Error'
         }
-      } catch {
-        throw new Error('Error al borrar un producto')
-      }
-    }
-  }
+		}
+	}
 }
+
+module.exports = Container
